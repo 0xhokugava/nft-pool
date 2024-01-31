@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../libs/Roles.sol";
 
 contract NFTKeeper is ERC20, AccessControl {
+    mapping(address=>uint256) nftToBalance;
     constructor(
         string memory name_,
-        string memory symbol_,
-        uint8 decimals_
+        string memory symbol_
     ) ERC20(name_, symbol_) {}
 
     function mint(
