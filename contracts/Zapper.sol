@@ -9,6 +9,7 @@ import "./integrations/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./integrations/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "./interfaces/IZapper.sol";
 import "./token/NFTKeeper.sol";
+import "./libs/TransferHelper.sol";
 import "./libs/Roles.sol";
 
 import "hardhat/console.sol";
@@ -31,25 +32,26 @@ contract Zapper is IZapper, AccessControl {
 
     function _mintFTMonkeys(
         address _nftToken,
-        uint[] memory tokenIds,
-        address _receiver
-    ) internal returns (uint nftKeeperTokenValue) {
-        if (IERC721(_nftToken).balanceOf(_receiver) == 0)
+        uint[] memory tokenIds
+    ) public returns (uint nftKeeperTokenValue) {
+        if (IERC721(_nftToken).balanceOf(msg.sender) == 0) {
             revert("Zero 721 balance");
+        }
         if (tokenIds.length == 0) revert("Should be at least 1 tokenID");
         for (uint i = 0; i < tokenIds.length; i++) {
             IERC721(_nftToken).transferFrom(
-                _receiver,
+                msg.sender,
                 address(this),
                 tokenIds[i]
             );
         }
         uint tokensForMint = tokenIds.length * 1e18;
         // MINT TOKENS
-        nftKeeper.mint(_receiver, tokensForMint);
+        nftKeeper.mint(address(this), tokensForMint);
         nftToBalance[_nftToken] += tokensForMint;
         nftKeeperTokenValue = tokensForMint;
-        if (IERC20(_nftToken).balanceOf(_receiver) <= 0) {
+
+        if (IERC20(_nftToken).balanceOf(address(this)) <= 0) {
             revert ZeroTokenBalance(_nftToken);
         }
         emit VirtualMonkeysMinted(_nftToken, tokensForMint);
@@ -67,41 +69,29 @@ contract Zapper is IZapper, AccessControl {
     ) public returns (uint liquidity) {
         address token0 = IUniswapV2Pair(_pair).token0();
         address token1 = IUniswapV2Pair(_pair).token1();
-
         address keeperToken = _ftToken == token0 ? token1 : token0;
+        _mintFTMonkeys(_nftToken, _amountsNft);
+        uint ftBalance = IERC20(_ftToken).balanceOf(_receiver);
+        uint nftKeeperBalance = IERC20(keeperToken).balanceOf(address(this));
 
-        uint mintedTokens = _mintFTMonkeys(_nftToken, _amountsNft, _receiver);
+        if (ftBalance <= 0) revert ZeroTokenBalance(token0);
+        if (nftKeeperBalance <= 0) revert ZeroTokenBalance(token1);
 
-        console.log(mintedTokens);
-
-        if (IERC20(_ftToken).balanceOf(_receiver) <= 0) {
-            revert ZeroTokenBalance(token0);
-        }
-        if (IERC20(keeperToken).balanceOf(_receiver) <= 0) {
-            revert ZeroTokenBalance(token1);
-        }
-
-        safeTransferFrom(
-            IERC20(_ftToken),
+        TransferHelper.safeTransferFrom(
+            _ftToken,
             msg.sender,
             address(this),
             _amountFt
         );
-        safeTransferFrom(
-            IERC20(keeperToken),
-            msg.sender,
-            address(this),
-            mintedTokens
-        );
 
-        safeApprove(IERC20(_ftToken), _routerAddr, _amountFt);
-        safeApprove(IERC20(keeperToken), _routerAddr, mintedTokens);
+        TransferHelper.safeApprove(_ftToken, _routerAddr, _amountFt);
+        TransferHelper.safeApprove(keeperToken, _routerAddr, nftKeeperBalance);
 
-        (, , liquidity) = IUniswapV2Router01(_routerAddr).addLiquidity(
+        (, , liquidity) = IUniswapV2Router02(_routerAddr).addLiquidity(
             _ftToken,
             keeperToken,
             _amountFt,
-            mintedTokens,
+            nftKeeperBalance,
             0,
             0,
             _receiver,
@@ -113,58 +103,26 @@ contract Zapper is IZapper, AccessControl {
         address _tokenA,
         address _tokenB,
         address _factory,
-        address _router
+        address _router,
+        address _receiver
     ) external returns (uint amountA, uint amountB) {
         address pair = IUniswapV2Factory(_factory).getPair(_tokenA, _tokenB);
-
-        uint liquidity = IERC20(pair).balanceOf(address(this));
-        safeApprove(IERC20(pair), _router, liquidity);
-
-        (amountA, amountB) = IUniswapV2Router01(_router).removeLiquidity(
+        uint liquidity = IERC20(pair).balanceOf(_receiver);
+        TransferHelper.safeApprove(pair, _router, liquidity);
+        TransferHelper.safeTransferFrom(
+            pair,
+            msg.sender,
+            address(this),
+            liquidity
+        );
+        (amountA, amountB) = IUniswapV2Router02(_router).removeLiquidity(
             _tokenA,
             _tokenB,
             liquidity,
-            1,
-            1,
-            address(this),
+            IERC20(_tokenA).balanceOf(_receiver),
+            IERC20(_tokenB).balanceOf(_receiver),
+            _receiver,
             block.timestamp
-        );
-    }
-
-    /**
-     * @dev The transferFrom function may or may not return a bool.
-     * The ERC-20 spec returns a bool, but some tokens don't follow the spec.
-     * Need to check if data is empty or true.
-     */
-    function safeTransferFrom(
-        IERC20 token,
-        address sender,
-        address recipient,
-        uint amount
-    ) internal {
-        (bool success, bytes memory returnData) = address(token).call(
-            abi.encodeCall(IERC20.transferFrom, (sender, recipient, amount))
-        );
-        require(
-            success &&
-                (returnData.length == 0 || abi.decode(returnData, (bool))),
-            "Transfer from fail"
-        );
-    }
-
-    /**
-     * @dev The approve function may or may not return a bool.
-     * The ERC-20 spec returns a bool, but some tokens don't follow the spec.
-     * Need to check if data is empty or true.
-     */
-    function safeApprove(IERC20 token, address spender, uint amount) internal {
-        (bool success, bytes memory returnData) = address(token).call(
-            abi.encodeCall(IERC20.approve, (spender, amount))
-        );
-        require(
-            success &&
-                (returnData.length == 0 || abi.decode(returnData, (bool))),
-            "Approve fail"
         );
     }
 }
