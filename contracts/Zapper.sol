@@ -26,8 +26,6 @@ contract Zapper is IZapper, AccessControl {
         nftKeeper = NFTKeeper(nftKeeperToken);
     }
 
-    function _grabFee() internal {}
-
     function _lotteryOption() internal {}
 
     function _mintFTMonkeys(
@@ -124,5 +122,57 @@ contract Zapper is IZapper, AccessControl {
             _receiver,
             block.timestamp
         );
+    }
+
+    function swap(
+        address _swapToken,
+        address _targetToken,
+        uint _amount,
+        address _recipient,
+        address _router
+    ) public returns (uint) {
+        IUniswapV2Router02 router = IUniswapV2Router02(_router);
+        address[] memory path = new address[](2);
+        uint fee = _calculateFee(_amount);
+        uint localAmount = _amount - fee;
+
+        TransferHelper.safeTransferFrom(
+            _swapToken,
+            msg.sender,
+            address(this),
+            fee
+        );
+        
+        TransferHelper.safeApprove(_swapToken, _router, localAmount);
+        TransferHelper.safeTransferFrom(
+            _swapToken,
+            msg.sender,
+            address(this),
+            localAmount
+        );
+        path[0] = _swapToken;
+        path[1] = _targetToken;
+
+        uint[] memory amounts;
+        amounts = router.swapExactTokensForTokens(
+            localAmount,
+            0,
+            path,
+            _recipient,
+            block.timestamp
+        );
+        return amounts[amounts.length - 1];
+    }
+
+    function _calculateFee(uint _amount) internal pure returns (uint fee){
+        return _amount * 25 / 100;
+    }
+
+    function getFeeBalance(address _token) public view returns (uint) {
+        return IERC20(_token).balanceOf(address(this));
+    }
+
+    function withdrawFee(address _token, uint value) public {
+        TransferHelper.safeTransferFrom(_token, address(this), msg.sender, value);
     }
 }
