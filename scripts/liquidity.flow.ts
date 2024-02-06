@@ -90,6 +90,18 @@ async function main() {
     console.log(await pair.getReserves());
     console.log(`💰 User NFTK balance equals ${await config.nftk.balanceOf(owner.address)}`)
     console.log(`💰 User USDT balance equals ${await config.usdt.balanceOf(owner.address)}`)
+
+
+    await config.usdt.connect(owner).mint(owner.address, config.usdtAmountForMint);
+
+    let balance = await config.mockErc721.balanceOf(config.project.zapper.address);
+
+    console.log("NFT balance " + balance);
+
+    await config.project.zapper.lotteryOption(config.mockErc721.address, config.usdt.address);
+
+    balance = await config.mockErc721.balanceOf(config.project.zapper.address);
+    console.log("NFT balance " + balance);
 };
 
 main().catch((error) => {

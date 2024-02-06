@@ -8,7 +8,7 @@ export async function init(owner: any) {
     const mockErc721 = projectTokens.mockErc721;
     const project = await deployZapper(owner, nftk);
     const uniswap = await deployUniswap(owner);
-    const nftBatch = [1, 2, 3];
+    const nftBatch = [1, 5, 4];
     const deadline = Math.floor(Date.now() / 1000 + (10 * 60))
     const usdtAmountForMint = ethers.utils.parseEther("3");
 

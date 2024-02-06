@@ -20,21 +20,72 @@ contract Zapper is IZapper, AccessControl {
     address nftKeeperToken;
 
     mapping(address => uint256) public nftToBalance;
+    mapping(uint256 => bool) existedContractTokenIds;
+    mapping(address => uint[]) allExistedTokenIds;
 
     constructor(address _nftKeeperToken) {
         nftKeeperToken = _nftKeeperToken;
         nftKeeper = NFTKeeper(nftKeeperToken);
     }
 
-    function _lotteryOption() internal {}
+    function lotteryOption(address _nft, address _paymentToken) public {
+        if (IERC20(_paymentToken).balanceOf(msg.sender) < 1e18) {
+            revert("Your _paymentToken balance less than 1");
+        }
+        uint rand = random();
+        if (rand <= 20) return;
+        uint nftBalance = IERC721(_nft).balanceOf(address(this));
+        if (nftBalance == 0) {
+            revert("There is no NFT of that type");
+        }
+        if (rand > 20 && rand <= 85) {
+            _transferTreasury(_nft, 1, _paymentToken);
+            console.log("Regular");
+        }
+        if (rand > 85 && rand <= 92) {
+            _transferTreasury(_nft, 2, _paymentToken);
+            console.log("Low");
+        }
+        if (rand > 92 && rand <= 98) {
+            _transferTreasury(_nft, 3, _paymentToken);
+            console.log("Medium");
+        }
+        if (rand > 98) {
+            _transferTreasury(_nft, 4, _paymentToken);
+            console.log("High");
+        }
+    }
+
+    function isTokenOnBalance(uint _pos) public view returns(bool){
+        return existedContractTokenIds[_pos];
+    }
+
+    function _transferTreasury(
+        address _nft,
+        uint _luckValue,
+        address _paymentToken
+    ) internal {
+        TransferHelper.safeTransferFrom(
+            _paymentToken,
+            msg.sender,
+            address(this),
+            _luckValue ** 18
+        );
+        for (uint i = 0; i < _luckValue; i++) {
+            uint localNft = allExistedTokenIds[address(this)][i];
+            if (IERC721(_nft).ownerOf(localNft) == address(this)) {
+                IERC721(_nft).transferFrom(address(this), msg.sender, localNft);
+                existedContractTokenIds[i] = false;
+            }
+        }
+    }
 
     function _mintFTMonkeys(
         address _nftToken,
         uint[] memory tokenIds
     ) public returns (uint nftKeeperTokenValue) {
-        if (IERC721(_nftToken).balanceOf(msg.sender) == 0) {
-            revert("Zero 721 balance");
-        }
+        uint allUserTokens = IERC721(_nftToken).balanceOf(msg.sender);
+        if (allUserTokens == 0) revert("Zero 721 balance");
         if (tokenIds.length == 0) revert("Should be at least 1 tokenID");
         for (uint i = 0; i < tokenIds.length; i++) {
             IERC721(_nftToken).transferFrom(
@@ -42,6 +93,8 @@ contract Zapper is IZapper, AccessControl {
                 address(this),
                 tokenIds[i]
             );
+            existedContractTokenIds[tokenIds[i]] = true;
+            allExistedTokenIds[address(this)].push(tokenIds[i]);
         }
         uint tokensForMint = tokenIds.length * 1e18;
         // MINT TOKENS
@@ -142,7 +195,7 @@ contract Zapper is IZapper, AccessControl {
             address(this),
             fee
         );
-        
+
         TransferHelper.safeApprove(_swapToken, _router, localAmount);
         TransferHelper.safeTransferFrom(
             _swapToken,
@@ -164,8 +217,8 @@ contract Zapper is IZapper, AccessControl {
         return amounts[amounts.length - 1];
     }
 
-    function _calculateFee(uint _amount) internal pure returns (uint fee){
-        return _amount * 25 / 100;
+    function _calculateFee(uint _amount) internal pure returns (uint fee) {
+        return (_amount * 25) / 100;
     }
 
     function getFeeBalance(address _token) public view returns (uint) {
@@ -173,6 +226,24 @@ contract Zapper is IZapper, AccessControl {
     }
 
     function withdrawFee(address _token, uint value) public {
-        TransferHelper.safeTransferFrom(_token, address(this), msg.sender, value);
+        TransferHelper.safeTransferFrom(
+            _token,
+            address(this),
+            msg.sender,
+            value
+        );
+    }
+
+    function random() public view returns (uint256) {
+        uint rand = uint256(
+            keccak256(
+                abi.encodePacked(
+                    tx.origin,
+                    blockhash(block.number - 1),
+                    block.timestamp
+                )
+            )
+        );
+        return rand % 100;
     }
 }
