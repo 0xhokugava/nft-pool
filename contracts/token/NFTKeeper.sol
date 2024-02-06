@@ -9,18 +9,14 @@ import "../libs/Roles.sol";
 contract NFTKeeper is ERC20, AccessControl {
     constructor(
         string memory name_,
-        string memory symbol_,
-        uint8 decimals_
+        string memory symbol_
     ) ERC20(name_, symbol_) {}
 
-    function mint(
-        address account,
-        uint256 amount
-    ) external onlyRole(Roles.MINTER_ROLE) {
+    function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }
 
-    function burn(uint256 amount) external onlyRole(Roles.BURNER_ROLE) {
+    function burn(uint256 amount) external {
         _burn(msg.sender, amount);
     }
 

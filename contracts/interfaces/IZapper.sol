@@ -2,20 +2,6 @@
 pragma solidity ^0.8.23;
 
 interface IZapper {
+    event VirtualMonkeysMinted(address token, uint value);
     error ZeroTokenBalance(address token);
-
-    function zapInToken(
-        address _from,
-        address _pair,
-        uint[] memory amounts,
-        address routerAddr
-    ) external;
-
-    function zapOutToken(
-        address _from,
-        uint amount,
-        address _to,
-        address routerAddr,
-        address _recipient
-    ) external;
 }
