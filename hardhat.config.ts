@@ -18,6 +18,11 @@ const config: HardhatUserConfig = {
     //   accounts: [process.env.ACCOUNT || ""],
     //   blockGasLimit: 100000000429720,
     // },
+    polygon: {
+      url: process.env.POLYGON_ENDPOINT || "",
+      accounts: [`0x${process.env.PRIVATE_KEY}` || ""],
+      chainId: 137
+    },
     hardhat: {
       // forking: {
       //   url: process.env.MAINNET_ENDPOINT || "",
@@ -45,9 +50,10 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      goerli: process.env.ETHERSCAN_API || "",
+      polygon: process.env.ETHERSCAN_API || "",
     },
   },
 };
 
 export default config;
+

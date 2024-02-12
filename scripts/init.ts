@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { deployTokens, deployUniswap, deployZapper } from "./deploy";
+import { deployTokens, deployUniswap, deployZapper } from "./deployTest";
 
 export async function init(owner: any) {
     const projectTokens = await deployTokens(owner);

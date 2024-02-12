@@ -97,9 +97,7 @@ async function main() {
     let balance = await config.mockErc721.balanceOf(config.project.zapper.address);
 
     console.log("NFT balance " + balance);
-
     await config.project.zapper.lotteryOption(config.mockErc721.address, config.usdt.address);
-
     balance = await config.mockErc721.balanceOf(config.project.zapper.address);
     console.log("NFT balance " + balance);
 };
