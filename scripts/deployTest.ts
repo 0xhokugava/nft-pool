@@ -10,7 +10,7 @@ export async function deployTokens(owner: any) {
     const usdt = await USDT.deploy("USD token", "USDT");
 
     const NFTK = await ethers.getContractFactory("NFTKeeper", owner);
-    const nftk = await NFTK.deploy("NFT Keeper", "NFTK");
+    const nftk = await NFTK.deploy();
 
     const MockERC721 = await ethers.getContractFactory("MockERC721", owner);
     const mockErc721 = await MockERC721.deploy();

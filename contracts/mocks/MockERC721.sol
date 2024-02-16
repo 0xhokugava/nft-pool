@@ -7,7 +7,6 @@ contract MockERC721 is ERC721 {
     constructor() ERC721("Monkey item", "MIT") {
 
     }
-
     function mint(address _to, uint _tokenId) public {
         _mint(_to, _tokenId);
     }

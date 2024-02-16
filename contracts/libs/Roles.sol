@@ -11,4 +11,7 @@ library Roles {
     // @notice access control role for pair creation
     bytes32 public constant PAIR_CREATOR_ROLE =
         bytes32(uint256(keccak256("access.roles.creator")) - 1);
+    // @notice access control role for deployer
+    bytes32 public constant DEPLOYER_ROLE =
+        bytes32(uint256(keccak256("access.roles.deployer")) - 1);
 }

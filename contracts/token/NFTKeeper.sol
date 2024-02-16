@@ -7,10 +7,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../libs/Roles.sol";
 
 contract NFTKeeper is ERC20, AccessControl {
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {}
+    constructor() ERC20("NFT Keeper", "NFTK") {}
 
     function mint(address account, uint256 amount) external {
         _mint(account, amount);

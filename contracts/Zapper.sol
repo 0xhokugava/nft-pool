@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./integrations/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./integrations/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./integrations/uniswapv2/interfaces/IUniswapV2Factory.sol";
@@ -14,50 +15,44 @@ import "./libs/Roles.sol";
 
 import "hardhat/console.sol";
 
-contract Zapper is IZapper, AccessControl {
+contract Zapper is IZapper, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
     NFTKeeper nftKeeper;
     address nftKeeperToken;
 
-    mapping(address => uint256) public nftToBalance;
+    mapping(address => uint256) nftToBalance;
     mapping(uint256 => bool) existedContractTokenIds;
     mapping(address => uint[]) allExistedTokenIds;
 
     constructor(address _nftKeeperToken) {
         nftKeeperToken = _nftKeeperToken;
         nftKeeper = NFTKeeper(nftKeeperToken);
+        _grantRole(Roles.DEPLOYER_ROLE, msg.sender);
     }
 
-    function lotteryOption(address _nft, address _paymentToken) public {
+    function lotteryOption(
+        address _nft,
+        address _paymentToken
+    ) public nonReentrant {
         if (IERC20(_paymentToken).balanceOf(msg.sender) < 1e18) {
-            revert("Your _paymentToken balance less than 1");
+            revert ZeroTokenBalance(_paymentToken);
         }
         uint rand = random();
         if (rand <= 20) return;
         uint nftBalance = IERC721(_nft).balanceOf(address(this));
-        if (nftBalance == 0) {
-            revert("There is no NFT of that type");
-        }
+        if (nftBalance == 0) revert NoNFT(_nft);
         if (rand > 20 && rand <= 85) {
             _transferTreasury(_nft, 1, _paymentToken);
-            console.log("Regular");
         }
         if (rand > 85 && rand <= 92) {
             _transferTreasury(_nft, 2, _paymentToken);
-            console.log("Low");
         }
         if (rand > 92 && rand <= 98) {
             _transferTreasury(_nft, 3, _paymentToken);
-            console.log("Medium");
         }
         if (rand > 98) {
             _transferTreasury(_nft, 4, _paymentToken);
-            console.log("High");
         }
-    }
-
-    function isTokenOnBalance(uint _pos) public view returns(bool){
-        return existedContractTokenIds[_pos];
     }
 
     function _transferTreasury(
@@ -73,9 +68,15 @@ contract Zapper is IZapper, AccessControl {
         );
         for (uint i = 0; i < _luckValue; i++) {
             uint localNft = allExistedTokenIds[address(this)][i];
-            if (IERC721(_nft).ownerOf(localNft) == address(this)) {
-                IERC721(_nft).transferFrom(address(this), msg.sender, localNft);
-                existedContractTokenIds[i] = false;
+            if (existedContractTokenIds[localNft]) {
+                if (IERC721(_nft).ownerOf(localNft) == address(this)) {
+                    IERC721(_nft).transferFrom(
+                        address(this),
+                        msg.sender,
+                        localNft
+                    );
+                    existedContractTokenIds[localNft] = false;
+                }
             }
         }
     }
@@ -83,7 +84,7 @@ contract Zapper is IZapper, AccessControl {
     function _mintFTMonkeys(
         address _nftToken,
         uint[] memory tokenIds
-    ) public returns (uint nftKeeperTokenValue) {
+    ) private returns (uint nftKeeperTokenValue) {
         uint allUserTokens = IERC721(_nftToken).balanceOf(msg.sender);
         if (allUserTokens == 0) revert("Zero 721 balance");
         if (tokenIds.length == 0) revert("Should be at least 1 tokenID");
@@ -157,6 +158,9 @@ contract Zapper is IZapper, AccessControl {
         address _router,
         address _receiver
     ) external returns (uint amountA, uint amountB) {
+        if(msg.sender == address(0)) revert ZeroAddress();
+        if(_tokenA == address(0)) revert ZeroAddress();
+        if(_tokenB == address(0)) revert ZeroAddress();
         address pair = IUniswapV2Factory(_factory).getPair(_tokenA, _tokenB);
         uint liquidity = IERC20(pair).balanceOf(_receiver);
         TransferHelper.safeApprove(pair, _router, liquidity);
@@ -184,6 +188,9 @@ contract Zapper is IZapper, AccessControl {
         address _recipient,
         address _router
     ) public returns (uint) {
+        if(msg.sender == address(0)) revert ZeroAddress();
+        if(_swapToken == address(0)) revert ZeroAddress();
+        if(_targetToken == address(0)) revert ZeroAddress();
         IUniswapV2Router02 router = IUniswapV2Router02(_router);
         address[] memory path = new address[](2);
         uint fee = _calculateFee(_amount);
@@ -218,6 +225,7 @@ contract Zapper is IZapper, AccessControl {
     }
 
     function _calculateFee(uint _amount) internal pure returns (uint fee) {
+        if(_amount == 0) revert ZeroAmount();
         return (_amount * 25) / 100;
     }
 
@@ -225,7 +233,9 @@ contract Zapper is IZapper, AccessControl {
         return IERC20(_token).balanceOf(address(this));
     }
 
-    function withdrawFee(address _token, uint value) public {
+    function withdrawFee(address _token, uint value) public onlyRole(Roles.DEPLOYER_ROLE) {
+        if(_token == address(0)) revert ZeroAddress();
+        if(value == 0) revert ZeroAmount();
         TransferHelper.safeTransferFrom(
             _token,
             address(this),
@@ -234,7 +244,7 @@ contract Zapper is IZapper, AccessControl {
         );
     }
 
-    function random() public view returns (uint256) {
+    function random() private view returns (uint256) {
         uint rand = uint256(
             keccak256(
                 abi.encodePacked(
