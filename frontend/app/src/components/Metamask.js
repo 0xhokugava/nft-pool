@@ -1,15 +1,14 @@
 import React, { Component } from 'react';
 import { ethers } from "ethers";
-import ZapperABI from "./abi/Zapper.json"
-import NftkABI from "./abi/NFTKeeper.json"
-import UniPairABI from "./abi/UniPair.json"
-import UniFactoryV2 from "./abi/UniFactoryV2.json"
-import UniRouterV2 from "./abi/UniFactoryV2.json"
-import UsdcAbi from "./abi/Usdc.json"
-import MockNftAbi from "./abi/MockNFT.json"
+import ZapperABI from "../abi/Zapper.json"
+import NftkABI from "../abi/NFTKeeper.json"
+import UniPairABI from "../abi/UniPair.json"
+import UniFactoryV2 from "../abi/UniFactoryV2.json"
+import UniRouterV2 from "../abi/UniFactoryV2.json"
+import UsdcAbi from "../abi/Usdc.json"
+import MockNftAbi from "../abi/MockNFT.json"
 
 class Metamask extends Component {
-
     constructor(props) {
         super(props);
         this.state = {
@@ -57,9 +56,7 @@ class Metamask extends Component {
 
     }
 
-    async removeLiquidity(token0, token1, factory, router, receiver) {
 
-    }
 
     async approveBeforeAddLiquidity(erc20, erc721) {
 
