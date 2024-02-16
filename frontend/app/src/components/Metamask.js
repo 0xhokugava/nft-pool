@@ -24,48 +24,11 @@ function Metamask() {
     pair: null,
   });
 
-  const addLiquidity = async (
-    erc20,
-    erc721,
-    pair,
-    zapper,
-    amount,
-    nfts,
-    router,
-    receiver,
-    deadline
-  ) => {
-    const gasPrice = ethers.parseUnits("21", "gwei");
-    const gasLimit = 2100000;
-    const gasConfig = { gasPrice: gasPrice, gasLimit: gasLimit };
-
-    await erc721.setApprovalForAll(zapper.address, true);
-    await erc20.approve(zapper.address, ethers.MaxUint256);
-
-    console.log("Reserves before adding liquidity");
-    console.log(await pair.getReserves());
-
-    await zapper.addLiquidityWithNFT(
-      erc20.address,
-      erc721.address,
-      pair.address,
-      amount,
-      nfts,
-      router.address,
-      receiver,
-      deadline,
-      gasConfig
-    );
-
-    console.log("Reserves after adding liquidity");
-    console.log(await pair.getReserves());
-  };
-
   const connectToMetamask = async () => {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    console.log(signer);
     const accounts = await provider.send("eth_requestAccounts", []);
+
     const nftkContract = new ethers.Contract(
       "0xbE747DbAdB03692653505cA03b570BD7677ddA9C",
       NftkABI.abi,
@@ -101,6 +64,7 @@ function Metamask() {
       MockNftAbi,
       provider
     );
+
     const balance = await provider.getBalance(accounts[0]);
     const balanceInEther = ethers.formatEther(balance);
     const tokenName = await nftkContract.name();
@@ -124,14 +88,46 @@ function Metamask() {
     });
   };
 
-  const mintNft = async (to, tokenIds, mockNft, signer) => {
+  const mintNft = async tokenIds => {
     if (tokenIds > 8) {
       console.log("Huge request");
     } else {
       for (let i = 1; i < tokenIds; i++) {
-        await mockNft.connect(signer).mint(to, i);
+        await metamaskState.mockNft
+          .connect(metamaskState.signer)
+          .mint(metamaskState.signer, i);
       }
     }
+  };
+
+  const addLiquidity = async () => {
+    const gasPrice = ethers.parseUnits("21", "gwei");
+    const gasLimit = 2100000;
+    const gasConfig = { gasPrice: gasPrice, gasLimit: gasLimit };
+    console.log(MockNftAbi);
+    await MockNftAbi.setApprovalForAll(
+      "0xA87eeA6C0DedC684D9F1CA6499c3bA12138C71b3",
+      true
+    );
+    await NftkABI.approve(metamaskState.zapper.address, ethers.MaxUint256);
+
+    console.log("Reserves before adding liquidity");
+    console.log(await metamaskState.pair.getReserves());
+
+    await ZapperABI.addLiquidityWithNFT(
+      NftkABI.address,
+      MockNftAbi.address,
+      metamaskState.pair.address,
+      metamaskState.amount,
+      metamaskState.nfts,
+      metamaskState.router.address,
+      metamaskState.receiver,
+      metamaskState.deadline,
+      gasConfig
+    );
+
+    console.log("Reserves after adding liquidity");
+    console.log(await metamaskState.pair.getReserves());
   };
 
   return (
@@ -150,17 +146,8 @@ function Metamask() {
             {metamaskState.tokenBalanceInEther}
           </p>
 
-          <button
-            onClick={() =>
-              mintNft(
-                metamaskState.signer,
-                7,
-                metamaskState.mockNft,
-                metamaskState.signer
-              )
-            }>
-            Mint 7 NFTs
-          </button>
+          <button onClick={() => mintNft(7)}>Mint 7 NFTs</button>
+          <button onClick={addLiquidity}>Add liquidity</button>
         </div>
       )}
     </>
