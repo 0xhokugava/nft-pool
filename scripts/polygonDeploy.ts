@@ -14,6 +14,13 @@ async function main() {
     // console.log(`NFTK address is ${nftk.address}`);
     // console.log(`Zapper address is ${zapper.address}`);
 
+    const Erc721: any = await ethers.getContractFactory("MockERC721");
+    const mockERC721: any = await Erc721.deploy();
+    await mockERC721.deployed();
+
+
+    console.log(`NFT mock address is ${mockERC721.address}`);
+
 }
 
 main().catch((error) => {
