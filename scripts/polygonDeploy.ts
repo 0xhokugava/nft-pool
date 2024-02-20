@@ -14,12 +14,21 @@ async function main() {
     // console.log(`NFTK address is ${nftk.address}`);
     // console.log(`Zapper address is ${zapper.address}`);
 
-    const Erc721: any = await ethers.getContractFactory("MockERC721");
-    const mockERC721: any = await Erc721.deploy();
-    await mockERC721.deployed();
+    // const Erc721: any = await ethers.getContractFactory("MockERC721");
+    // const mockERC721: any = await Erc721.deploy();
+    // await mockERC721.deployed();
+
+    const gasPrice = ethers.utils.parseUnits("61", "gwei"); // Set your desired gas price
+    const gasLimit = 6100000;
+
+    const gasConfig = { gasPrice: gasPrice, gasLimit: gasLimit };
+
+    const USDY: any = await ethers.getContractFactory("MockERC20");
+    const usdy: any = await USDY.deploy("USDY token", "USDY", gasConfig);
+    await usdy.deployed();
 
 
-    console.log(`NFT mock address is ${mockERC721.address}`);
+    console.log(`USDY mock address is ${usdy.address}`);
 
 }
 

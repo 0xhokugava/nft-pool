@@ -10,15 +10,15 @@ contract MockERC20 is ERC20, Ownable {
         string memory symbol_
     ) ERC20(name_, symbol_) Ownable(msg.sender) {}
 
-    function mint(address account, uint256 amount) external onlyOwner {
+    function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }
 
-    function burn(uint256 amount) external onlyOwner {
+    function burn(uint256 amount) external {
         _burn(msg.sender, amount);
     }
 
-    function burnFrom(address from, uint256 amount) external onlyOwner {
+    function burnFrom(address from, uint256 amount) external {
         _burn(from, amount);
     }
 }

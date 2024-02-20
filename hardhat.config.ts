@@ -20,8 +20,7 @@ const config: HardhatUserConfig = {
     // },
     polygon: {
       url: process.env.POLYGON_ENDPOINT || "",
-      accounts: [`0x${process.env.PRIVATE_KEY}` || ""],
-      chainId: 137
+      accounts: [`0x${process.env.PRIVATE_KEY}` || ""]
     },
     hardhat: {
       // forking: {
